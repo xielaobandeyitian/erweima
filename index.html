@@ -21,20 +21,25 @@
       background: linear-gradient(135deg, #f8fbff 0%, var(--bg) 100%);
       color: var(--text);
       min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
       padding: 24px;
     }
     .container {
-      width: min(960px, 100%);
+      width: min(1080px, 100%);
       background: var(--card);
-      border-radius: 24px;
+      border-radius: 28px;
       box-shadow: 0 18px 48px rgba(37, 99, 235, 0.12);
       padding: 28px;
+      margin: 0 auto;
     }
-    h1 { margin: 0 0 8px; font-size: 28px; }
-    p { color: var(--muted); line-height: 1.7; }
+    .hero {
+      background: linear-gradient(135deg, #2563eb, #60a5fa);
+      color: white;
+      padding: 20px 22px;
+      border-radius: 22px;
+      box-shadow: 0 14px 30px rgba(37, 99, 235, 0.16);
+    }
+    .hero h1 { margin: 0 0 8px; font-size: 24px; }
+    .hero p { margin: 0; color: rgba(255,255,255,0.95); line-height: 1.7; }
     .grid {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -43,17 +48,18 @@
     }
     .item {
       border: 1px solid #e5e7eb;
-      border-radius: 16px;
+      border-radius: 18px;
       padding: 16px;
       text-align: center;
       background: #fcfdff;
+      box-shadow: 0 8px 20px rgba(15,23,42,0.04);
     }
     .item img {
       width: 120px;
       height: 120px;
       object-fit: contain;
       margin-bottom: 10px;
-      border-radius: 12px;
+      border-radius: 14px;
       background: white;
       padding: 8px;
       border: 1px solid #e5e7eb;
@@ -61,14 +67,18 @@
     .item a {
       color: var(--accent);
       text-decoration: none;
-      font-weight: 600;
+      font-weight: 700;
+      display: inline-block;
+      margin-top: 6px;
     }
     .foot {
       margin-top: 20px;
       font-size: 14px;
       color: var(--muted);
+      line-height: 1.7;
     }
     @media (max-width: 700px) {
+      body { padding: 12px; }
       .grid { grid-template-columns: 1fr; }
       .container { padding: 20px; }
     }
@@ -76,35 +86,37 @@
 </head>
 <body>
   <div class="container">
-    <h1>展览板内容入口</h1>
-    <p>扫描下面 6 个二维码，即可查看对应内容。页面为静态文件，微信打开更快，且可免费长期部署。</p>
+    <div class="hero">
+      <h1>展览板内容入口</h1>
+      <p>扫描下面 6 个二维码，即可进入对应模块，查看文字、图片和视频内容；每个模块也可按分类层级继续浏览，并在管理页中新增、修改和删除内容。</p>
+    </div>
     <div class="grid">
       <div class="item">
         <img src="pages/qr-01.png" alt="二维码 1" />
-        <div><a href="pages/page-01.html">内容 1</a></div>
+        <div><a href="pages/page-01.html">模块 1</a></div>
       </div>
       <div class="item">
         <img src="pages/qr-02.png" alt="二维码 2" />
-        <div><a href="pages/page-02.html">内容 2</a></div>
+        <div><a href="pages/page-02.html">模块 2</a></div>
       </div>
       <div class="item">
         <img src="pages/qr-03.png" alt="二维码 3" />
-        <div><a href="pages/page-03.html">内容 3</a></div>
+        <div><a href="pages/page-03.html">模块 3</a></div>
       </div>
       <div class="item">
         <img src="pages/qr-04.png" alt="二维码 4" />
-        <div><a href="pages/page-04.html">内容 4</a></div>
+        <div><a href="pages/page-04.html">模块 4</a></div>
       </div>
       <div class="item">
         <img src="pages/qr-05.png" alt="二维码 5" />
-        <div><a href="pages/page-05.html">内容 5</a></div>
+        <div><a href="pages/page-05.html">模块 5</a></div>
       </div>
       <div class="item">
         <img src="pages/qr-06.png" alt="二维码 6" />
-        <div><a href="pages/page-06.html">内容 6</a></div>
+        <div><a href="pages/page-06.html">模块 6</a></div>
       </div>
     </div>
-    <div class="foot">提示：建议将页面部署到 GitHub Pages、Netlify 或 Vercel，均可免费使用。</div>
+    <div class="foot">提示：建议将页面部署到 GitHub Pages、Netlify 或 Vercel，均可免费使用。你也可以打开 <a href="manage.html" style="color:#2563eb;">管理数据</a> 来上传和保存内容。</div>
   </div>
 </body>
 </html>

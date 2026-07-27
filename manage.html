@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>内容管理中心</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif; margin: 0; background: #f7f9fc; color: #0f172a; -webkit-tap-highlight-color: transparent; }
+    .page { max-width: 1000px; margin: 0 auto; padding: 20px 14px 40px; }
+    .card { background: white; border-radius: 18px; padding: 16px; box-shadow: 0 8px 20px rgba(15,23,42,0.05); margin-bottom: 14px; }
+    .grid { display: grid; grid-template-columns: 1.4fr 0.8fr; gap: 14px; }
+    textarea, input, select { width: 100%; border: 1px solid #dbe2ea; border-radius: 10px; padding: 10px; font-size: 14px; margin-top: 8px; }
+    button, .btn { display: inline-block; padding: 12px 16px; border: none; border-radius: 999px; background: #2563eb; color: white; text-decoration: none; cursor: pointer; margin-top: 8px; min-height: 44px; line-height: 1.2; touch-action: manipulation; }
+    .btn.secondary, button.secondary { background: #e5eefc; color: #2563eb; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .hint { color: #64748b; font-size: 13px; }
+    .small { font-size: 13px; color: #6b7280; }
+    .qr-box { min-height: 180px; display: grid; place-items: center; background: #f8fbff; border-radius: 14px; border: 1px dashed #c7d2fe; padding: 12px; }
+    .qr-box img { max-width: 100%; height: auto; }
+    @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="card">
+      <h2>内容管理中心</h2>
+      <p class="hint">这里按“后台管理”的思路进行内容维护，支持新增、修改、删除内容，并可上传图片或视频。当前数据保存在本地浏览器，适合演示和内部测试。</p>
+      <div class="grid">
+        <div class="card" style="padding: 14px; margin-bottom: 0;">
+          <h3>内容编辑</h3>
+          <label>模块</label>
+          <select id="moduleSelect"></select>
+          <div class="row" style="margin-top: 8px;">
+            <input id="moduleNameInput" placeholder="新增模块名称" />
+            <button onclick="addModule()">新增模块</button>
+            <button class="secondary" onclick="deleteCurrentModule()">删除模块</button>
+          </div>
+          <label>父级目录</label>
+          <select id="parentSelect"></select>
+          <label>编辑对象</label>
+          <select id="nodeSelect"></select>
+          <label>内容类型</label>
+          <select id="typeSelect">
+            <option value="folder">目录</option>
+            <option value="word">文字</option>
+            <option value="image">图片</option>
+            <option value="video">视频</option>
+          </select>
+          <label>标题</label>
+          <input id="titleInput" placeholder="例如：项目说明、宣传图、演示视频" />
+          <label>摘要</label>
+          <textarea id="summaryInput" rows="3" placeholder="请输入简要说明"></textarea>
+          <div class="row" style="margin-top: 8px;">
+            <input id="categoryNameInput" placeholder="新增分类名称" />
+            <button onclick="addCategory()">新增分类</button>
+          </div>
+          <div id="extraFields"></div>
+          <div class="row" style="margin-top: 10px;">
+            <button onclick="saveNode()">保存内容</button>
+            <button class="secondary" onclick="deleteSelectedNode()">删除选中</button>
+            <a class="btn secondary" href="index.html">返回首页</a>
+          </div>
+        </div>
+        <div class="card" style="padding: 14px; margin-bottom: 0;">
+          <h3>二维码入口</h3>
+          <p class="small" id="qrHint">当前模块入口二维码会根据模块编号自动显示。</p>
+          <div class="qr-box">
+            <img id="qrPreview" src="pages/qr-01.png" alt="二维码预览" />
+          </div>
+          <p class="small">扫描二维码即可进入对应模块页面，内容变更后可在管理页中继续更新。</p>
+        </div>
+      </div>
+      <div class="card" style="padding: 14px; margin-top: 8px;">
+        <h3>高级编辑</h3>
+        <textarea id="jsonData" rows="16"></textarea>
+        <div class="row" style="margin-top: 10px;">
+          <button onclick="saveJson()">保存 JSON</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="app.js"></script>
+  <script>
+    function loadEditor() {
+      const data = window.qrTree.loadData();
+      document.getElementById('jsonData').value = JSON.stringify(data, null, 2);
+      fillModuleSelect(data);
+      fillParentSelect();
+      fillNodeSelect();
+      renderExtraFields();
+      updateQrPreview();
+    }
+
+    function getCurrentModuleData() {
+      const data = window.qrTree.loadData();
+      const moduleId = document.getElementById('moduleSelect').value;
+      return data.modules.find((item) => item.id === moduleId) || data.modules[0];
+    }
+
+    function fillModuleSelect(data) {
+      const select = document.getElementById('moduleSelect');
+      const currentValue = select.value || data.modules[0]?.id;
+      select.innerHTML = data.modules.map((module) => `<option value="${module.id}" ${module.id === currentValue ? 'selected' : ''}>${module.title}</option>`).join('');
+    }
+
+    function fillParentSelect() {
+      const data = window.qrTree.loadData();
+      const moduleId = document.getElementById('moduleSelect').value;
+      const module = data.modules.find((item) => item.id === moduleId);
+      const select = document.getElementById('parentSelect');
+      const options = [{ label: '根目录', value: '' }];
+      function walk(nodes, path) {
+        for (const node of nodes || []) {
+          if (node.type === 'folder') {
+            options.push({ label: path ? `${path} / ${node.title}` : node.title, value: node.id });
+            walk(node.children || [], path ? `${path} / ${node.title}` : node.title);
+          }
+        }
+      }
+      walk(module ? module.children || [] : []);
+      select.innerHTML = options.map((item) => `<option value="${item.value}">${item.label}</option>`).join('');
+    }
+
+    function fillNodeSelect() {
+      const module = getCurrentModuleData();
+      const select = document.getElementById('nodeSelect');
+      const options = [{ label: '新增内容', value: '__new__' }];
+      function walk(nodes, path) {
+        for (const node of nodes || []) {
+          const label = path ? `${path} / ${node.title}` : node.title;
+          options.push({ label, value: node.id });
+          if (node.children) walk(node.children, label);
+        }
+      }
+      walk(module ? module.children || [] : []);
+      select.innerHTML = options.map((item) => `<option value="${item.value}">${item.label}</option>`).join('');
+    }
+
+    function renderExtraFields() {
+      const type = document.getElementById('typeSelect').value;
+      const container = document.getElementById('extraFields');
+      if (type === 'word') {
+        container.innerHTML = '<label>正文内容</label><textarea id="wordContent" rows="6" placeholder="请输入文字说明"></textarea>';
+      } else if (type === 'image') {
+        container.innerHTML = '<label>上传图片</label><input id="imageFile" type="file" accept="image/*" /><p class="small">上传后会保存为当前页面可显示图片。</p>';
+      } else if (type === 'video') {
+        container.innerHTML = '<label>视频链接</label><input id="videoUrl" placeholder="例如：https://.../demo.mp4" /><label>说明</label><textarea id="videoDesc" rows="3" placeholder="请输入视频说明"></textarea>';
+      } else {
+        container.innerHTML = '<p class="small">目录类型不需要额外内容。</p>';
+      }
+      populateForm();
+    }
+
+    function populateForm() {
+      const nodeId = document.getElementById('nodeSelect').value;
+      if (!nodeId || nodeId === '__new__') {
+        document.getElementById('titleInput').value = '';
+        document.getElementById('summaryInput').value = '';
+        document.getElementById('typeSelect').value = 'word';
+        document.getElementById('wordContent').value = '';
+        document.getElementById('videoUrl').value = '';
+        document.getElementById('videoDesc').value = '';
+        document.getElementById('imageFile').value = '';
+        return;
+      }
+      const data = window.qrTree.loadData();
+      const module = data.modules.find((item) => item.id === document.getElementById('moduleSelect').value);
+      const node = window.qrTree.findNodeById(module ? module.children || [] : [], nodeId);
+      if (!node) return;
+      document.getElementById('titleInput').value = node.title || '';
+      document.getElementById('summaryInput').value = node.summary || node.description || '';
+      document.getElementById('typeSelect').value = node.type || 'word';
+      if (node.type === 'word') {
+        document.getElementById('wordContent').value = node.content || '';
+      } else if (node.type === 'image') {
+        document.getElementById('imageFile').value = '';
+      } else if (node.type === 'video') {
+        document.getElementById('videoUrl').value = node.src || '';
+        document.getElementById('videoDesc').value = node.description || '';
+      }
+    }
+
+    function updateQrPreview() {
+      const moduleId = document.getElementById('moduleSelect').value;
+      const match = moduleId.match(/(\d+)$/);
+      const num = match ? String(match[1]).padStart(2, '0') : '01';
+      const qrImage = document.getElementById('qrPreview');
+      qrImage.src = `pages/qr-${num}.png`;
+      qrImage.alt = `模块 ${num} 二维码`;
+      document.getElementById('qrHint').textContent = `当前模块入口：pages/page-${num}.html`;
+    }
+
+    function addModule() {
+      const data = window.qrTree.loadData();
+      const title = document.getElementById('moduleNameInput').value.trim();
+      if (!title) {
+        alert('请输入模块名称');
+        return;
+      }
+      const module = window.qrTree.createModule(title, { description: '新增模块' });
+      window.qrTree.addModule(data, module);
+      window.qrTree.saveData(data);
+      alert('模块已新增');
+      loadEditor();
+    }
+
+    function deleteCurrentModule() {
+      const moduleId = document.getElementById('moduleSelect').value;
+      const data = window.qrTree.loadData();
+      const ok = window.qrTree.deleteModule(data, moduleId);
+      if (!ok) {
+        alert('删除失败');
+        return;
+      }
+      window.qrTree.saveData(data);
+      alert('模块已删除');
+      loadEditor();
+    }
+
+    function addCategory() {
+      const data = window.qrTree.loadData();
+      const moduleId = document.getElementById('moduleSelect').value;
+      const title = document.getElementById('categoryNameInput').value.trim();
+      if (!title) {
+        alert('请输入分类名称');
+        return;
+      }
+      const parentId = document.getElementById('parentSelect').value;
+      const node = window.qrTree.createNode('folder', title, { description: '新增分类', summary: '新增分类' });
+      const ok = window.qrTree.addNodeToParent(data, moduleId, parentId, node);
+      if (!ok) {
+        alert('新增分类失败');
+        return;
+      }
+      window.qrTree.saveData(data);
+      alert('分类已新增');
+      loadEditor();
+    }
+
+    async function saveNode() {
+      const data = window.qrTree.loadData();
+      const moduleId = document.getElementById('moduleSelect').value;
+      const type = document.getElementById('typeSelect').value;
+      const title = document.getElementById('titleInput').value.trim();
+      const summary = document.getElementById('summaryInput').value.trim();
+      if (!title) {
+        alert('请填写标题');
+        return;
+      }
+      const nodeId = document.getElementById('nodeSelect').value;
+      if (nodeId && nodeId !== '__new__') {
+        const patch = { title, summary };
+        if (type === 'word') {
+          patch.content = document.getElementById('wordContent').value;
+          patch.description = summary;
+        } else if (type === 'image') {
+          const fileInput = document.getElementById('imageFile');
+          if (fileInput.files && fileInput.files[0]) {
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            patch.src = await new Promise((resolve) => {
+              reader.onload = () => resolve(reader.result);
+              reader.readAsDataURL(file);
+            });
+          }
+          patch.caption = summary;
+          patch.description = summary;
+        } else if (type === 'video') {
+          patch.src = document.getElementById('videoUrl').value.trim();
+          patch.description = document.getElementById('videoDesc').value.trim() || summary;
+        }
+        const ok = window.qrTree.updateNode(data, moduleId, nodeId, patch);
+        if (!ok) {
+          alert('修改失败，请重试');
+          return;
+        }
+      } else {
+        const parentId = document.getElementById('parentSelect').value;
+        let node;
+        if (type === 'folder') {
+          node = window.qrTree.createNode('folder', title, { description: summary || '新增分类', summary });
+        } else if (type === 'word') {
+          node = window.qrTree.createNode('word', title, { summary, content: document.getElementById('wordContent').value, description: summary });
+        } else if (type === 'image') {
+          const fileInput = document.getElementById('imageFile');
+          let src = '';
+          if (fileInput.files && fileInput.files[0]) {
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            src = await new Promise((resolve) => {
+              reader.onload = () => resolve(reader.result);
+              reader.readAsDataURL(file);
+            });
+          }
+          node = window.qrTree.createNode('image', title, { summary, src, caption: summary, description: summary });
+        } else if (type === 'video') {
+          node = window.qrTree.createNode('video', title, { summary, src: document.getElementById('videoUrl').value.trim(), description: document.getElementById('videoDesc').value.trim() || summary });
+        }
+        const ok = window.qrTree.addNodeToParent(data, moduleId, parentId, node);
+        if (!ok) {
+          alert('新增失败，请检查模块或目录');
+          return;
+        }
+      }
+      window.qrTree.saveData(data);
+      alert('保存成功');
+      loadEditor();
+    }
+
+    function deleteSelectedNode() {
+      const nodeId = document.getElementById('nodeSelect').value;
+      if (!nodeId || nodeId === '__new__') {
+        alert('请先选择要删除的内容');
+        return;
+      }
+      const moduleId = document.getElementById('moduleSelect').value;
+      const data = window.qrTree.loadData();
+      const deleted = window.qrTree.deleteNode(data, moduleId, nodeId);
+      if (!deleted) {
+        alert('删除失败');
+        return;
+      }
+      window.qrTree.saveData(data);
+      alert('删除成功');
+      loadEditor();
+    }
+
+    function saveJson() {
+      const text = document.getElementById('jsonData').value;
+      try {
+        const data = JSON.parse(text);
+        window.qrTree.saveData(data);
+        alert('保存成功');
+      } catch (e) {
+        alert('JSON 格式有误，请检查后再保存');
+      }
+    }
+
+    document.getElementById('moduleSelect').addEventListener('change', () => {
+      fillParentSelect();
+      fillNodeSelect();
+      updateQrPreview();
+    });
+    document.getElementById('typeSelect').addEventListener('change', renderExtraFields);
+    document.getElementById('nodeSelect').addEventListener('change', populateForm);
+    window.addEventListener('DOMContentLoaded', loadEditor);
+  </script>
+</body>
+</html>
